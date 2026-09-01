@@ -18,6 +18,14 @@ if [[ -n "$ENV_BACKUP" ]]; then
   rm -f "$ENV_BACKUP"
 fi
 
+# Load runtime secrets for build/migrate (systemd also uses EnvironmentFile)
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
 # Ensure Nitro builds the Node server binary used by systemd (not vercel)
 if grep -q 'preset: "vercel"' vite.config.ts 2>/dev/null; then
   sed -i 's/preset: "vercel"/preset: "node-server"/' vite.config.ts
