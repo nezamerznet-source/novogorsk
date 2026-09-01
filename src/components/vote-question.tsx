@@ -14,6 +14,7 @@ export function VoteQuestion({
   canVote,
   pending,
   preview,
+  showLedger,
   onVote,
 }: {
   question: QuestionDetail;
@@ -22,6 +23,7 @@ export function VoteQuestion({
   canVote: boolean;
   pending: boolean;
   preview?: boolean;
+  showLedger?: boolean;
   onVote: (choice: Choice) => void;
 }) {
   return (
@@ -61,14 +63,16 @@ export function VoteQuestion({
         <ResultsMeter result={question.result} mode={mode} />
       </div>
 
-      <details className="mt-5">
-        <summary className="cursor-pointer text-sm font-medium text-muted hover:text-foreground">
-          Реестр голосов ({question.ledger.length})
-        </summary>
-        <div className="mt-3">
-          <LedgerTable rows={question.ledger} />
-        </div>
-      </details>
+      {showLedger ? (
+        <details className="mt-5">
+          <summary className="cursor-pointer text-sm font-medium text-muted hover:text-foreground">
+            Кто как проголосовал ({question.ledger.length})
+          </summary>
+          <div className="mt-3">
+            <LedgerTable rows={question.ledger} />
+          </div>
+        </details>
+      ) : null}
         </>
       )}
     </article>

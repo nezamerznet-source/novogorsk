@@ -35,16 +35,15 @@ function RollPage() {
     enabled: Boolean(user),
     retry: false,
   });
-  const ownerReady = Boolean(user && me.data?.owner);
+  const isCouncil = me.data?.owner?.role === "council";
   const roll = useQuery({
     queryKey: ["roll", user?.id],
     queryFn: () => getRoll(),
-    enabled: ownerReady,
+    enabled: isCouncil,
     retry: false,
   });
   const buildings = useQuery({ queryKey: ["buildings"], queryFn: () => getBuildings() });
   const home = useQuery({ queryKey: ["home"], queryFn: () => getHome() });
-  const isCouncil = me.data?.owner?.role === "council";
   const phones = useQuery({
     queryKey: ["roll-phones", user?.id],
     queryFn: () => getRollPhones(),
@@ -62,7 +61,7 @@ function RollPage() {
   }));
   const area = rows.reduce((s, r) => s + r.areaSqm, 0);
   const loading = roll.isPending || buildings.isPending;
-  const houseNo = houses[0]?.houseNo ?? 52;
+  const houseNo = houses[0]?.houseNo ?? 51;
   const totalApts = home.data?.totalApartments ?? null;
   const councilCount = rows.filter((r) => r.role === "council").length;
   const qc = useQueryClient();
@@ -86,19 +85,19 @@ function RollPage() {
 
   if (isPending) return <Skeleton className="h-80 w-full rounded-xl" />;
   if (!user) return <RedirectToSignIn />;
-  if (me.isSuccess && !me.data.owner) {
+  if (me.isPending) return <Skeleton className="h-80 w-full rounded-xl" />;
+  if (!isCouncil) {
     return (
       <div className="mx-auto max-w-lg space-y-4">
-        <h1 className="font-display text-3xl font-semibold">Сначала квартира</h1>
+        <h1 className="font-display text-3xl font-semibold">Нет доступа</h1>
         <p className="text-sm text-muted">
-          Реестр виден только собственникам, которые указали квартиру. Так
-          список не читают случайные гости.
+          Реестр с ФИО, квартирами и телефонами видит только совет дома.
         </p>
         <Link
-          to="/profile"
+          to="/"
           className="inline-flex h-11 items-center rounded-sm bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
-          Зарегистрировать квартиру
+          К повестке
         </Link>
       </div>
     );
@@ -114,10 +113,9 @@ function RollPage() {
           Реестр собственников
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-          Сверьте список с соседями. Страница только для тех, кто вошёл и
-          указал квартиру. Если видите чужую запись — это повод разобраться до
-          кворума. Телефоны видит только совет дома. Совет может править и
-          удалять карточки и назначать админов. Email не публикуется.
+          Список собственников — только совету дома. Если кто-то записался на
+          чужую квартиру, карточку можно поправить или удалить. Здесь же
+          назначают других админов. Email не показывается.
         </p>
         <p className="mt-3 text-sm tabular-nums text-foreground">
           Дом {houseNo} · {countLabel(rows.length, "квартира", "квартиры", "квартир")}
@@ -310,13 +308,13 @@ function TotalsForm({
         e.preventDefault();
         const n = Number(apts);
         if (!Number.isInteger(n) || n < 1) {
-          toast.error("Укажите, сколько квартир в трёх корпусах дома 52");
+          toast.error("Укажите, сколько квартир в трёх корпусах дома 51");
           return;
         }
         save.mutate();
       }}
     >
-      <p className="text-sm font-medium">Сколько квартир в доме 52</p>
+      <p className="text-sm font-medium">Сколько квартир в доме 51</p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         Чтобы на голосовании видеть процент не только от реестра, но и от всех
         квартир трёх корпусов. Площадь — по желанию.

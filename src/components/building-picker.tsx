@@ -11,7 +11,7 @@ export function BuildingPicker({
   onChange: (id: number) => void;
 }) {
   const selected = buildings.find((b) => b.id === value) ?? null;
-  const houseNo = selected?.houseNo ?? buildings[0]?.houseNo ?? 52;
+  const houseNo = selected?.houseNo ?? buildings[0]?.houseNo ?? 51;
 
   return (
     <div className="space-y-3">

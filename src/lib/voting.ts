@@ -194,7 +194,21 @@ function normalizeName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 
-export const getHome = createServerFn({ method: "POST" }).handler(async () => {
+async function ownerRoleOf(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  userId: string | null | undefined,
+): Promise<"owner" | "council" | null> {
+  if (!userId) return null;
+  const rows = await sql<{ role: string }>`
+    select role from owners where user_id = ${userId} limit 1
+  `;
+  if (!rows[0]) return null;
+  return rows[0].role === "council" ? "council" : "owner";
+}
+
+export const getHome = createServerFn({ method: "POST" })
+  .middleware([optionalUserMiddleware])
+  .handler(async ({ context }) => {
   const sql = await getSql();
   const settings = await sql<{
     name: string;
@@ -213,17 +227,22 @@ export const getHome = createServerFn({ method: "POST" }).handler(async () => {
     select id, name, address, house_no, corpus_no from buildings
     order by house_no, corpus_no
   `;
-  const assemblies = await sql<{
-    id: number;
-    title: string;
-    description: string;
-    status: string;
-    closes_at: unknown;
-    created_at: unknown;
-    created_by: string;
-    question_count: number;
-    voter_count: number;
-  }>`
+  const stats = await sql<{ n: number; area: unknown }>`
+    select count(*)::int as n, coalesce(sum(area_sqm), 0) as area from owners
+  `;
+  const role = await ownerRoleOf(sql, context.userId);
+  const assemblies = role
+    ? await sql<{
+        id: number;
+        title: string;
+        description: string;
+        status: string;
+        closes_at: unknown;
+        created_at: unknown;
+        created_by: string;
+        question_count: number;
+        voter_count: number;
+      }>`
     select
       a.id,
       a.title,
@@ -242,24 +261,24 @@ export const getHome = createServerFn({ method: "POST" }).handler(async () => {
     from assemblies a
     where a.status <> 'draft'
     order by a.created_at desc
-  `;
-  const stats = await sql<{ n: number; area: unknown }>`
-    select count(*)::int as n, coalesce(sum(area_sqm), 0) as area from owners
-  `;
+  `
+    : [];
   const data: HomeData = {
     complexName: settings[0]?.name ?? "Новогорск Курорт",
     buildings: buildings.map(mapBuilding),
-    assemblies: assemblies.map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      status: effectiveStatus(row.status, toIso(row.closes_at)),
-      closesAt: toIso(row.closes_at),
-      createdAt: toIso(row.created_at) ?? "",
-      createdBy: row.created_by,
-      questionCount: toNum(row.question_count),
-      voterCount: toNum(row.voter_count),
-    })),
+    assemblies: role
+      ? assemblies.map((row) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          status: effectiveStatus(row.status, toIso(row.closes_at)),
+          closesAt: toIso(row.closes_at),
+          createdAt: toIso(row.created_at) ?? "",
+          createdBy: row.created_by,
+          questionCount: toNum(row.question_count),
+          voterCount: toNum(row.voter_count),
+        }))
+      : [],
     registeredApartments: toNum(stats[0]?.n),
     registeredArea: toNum(stats[0]?.area),
     totalApartments: settings[0]?.total_apartments == null ? null : toNum(settings[0].total_apartments),
@@ -289,15 +308,13 @@ export const getAssembly = createServerFn({ method: "POST" })
     const assembly = assemblies[0];
     if (!assembly) return null;
 
+    const role = await ownerRoleOf(sql, context.userId);
     if (assembly.status === "draft") {
       const userId = context.userId;
       if (!userId) return null;
-      if (assembly.created_by !== userId) {
-        const me = await sql<{ role: string }>`
-          select role from owners where user_id = ${userId}
-        `;
-        if (me[0]?.role !== "council") return null;
-      }
+      if (assembly.created_by !== userId && role !== "council") return null;
+    } else if (!role) {
+      return null;
     }
 
     const questions = await sql<{
@@ -411,7 +428,7 @@ export const getAssembly = createServerFn({ method: "POST" })
         title: q.title,
         description: q.description,
         result: resultByQ.get(q.id) ?? emptyResult(),
-        ledger: ledgerByQ.get(q.id) ?? [],
+        ledger: role === "council" ? ledgerByQ.get(q.id) ?? [] : [],
       })),
     };
     return detail;
@@ -421,10 +438,7 @@ export const getRoll = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const me = await sql<{ user_id: string }>`
-      select user_id from owners where user_id = ${context.userId}
-    `;
-    if (!me[0]) throw new Error("Сначала зарегистрируйте квартиру");
+    await requireCouncil(sql, context.userId);
     try {
     const counts = await sql<{ n: number }>`select count(*)::int as n from owners`;
     const rows = await sql<{
@@ -947,6 +961,28 @@ export const closeAssembly = createServerFn({ method: "POST" })
     await sql`
       update assemblies
       set status = 'closed', closes_at = coalesce(closes_at, now())
+      where id = ${data.assemblyId}
+    `;
+    return { ok: true as const };
+  });
+
+export const reopenAssembly = createServerFn({ method: "POST" })
+  .validator(z.object({ assemblyId: z.number().int().positive() }))
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await requireCouncil(sql, context.userId);
+    const rows = await sql<{ status: string }>`
+      select status from assemblies where id = ${data.assemblyId}
+    `;
+    const assembly = rows[0];
+    if (!assembly) throw new Error("Собрание не найдено");
+    if (assembly.status === "draft") {
+      throw new Error("Сначала опубликуйте черновик");
+    }
+    await sql`
+      update assemblies
+      set status = 'open', closes_at = null
       where id = ${data.assemblyId}
     `;
     return { ok: true as const };

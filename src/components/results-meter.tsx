@@ -1,4 +1,4 @@
-import { CHOICE_LABEL, formatArea, formatInt, percent, type Choice } from "@/lib/format";
+import { CHOICE_LABEL, formatArea, formatInt, formatPct, percent, type Choice } from "@/lib/format";
 import type { QuestionResult, WeightMode } from "@/lib/voting";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ export function ResultsMeter({
 
   return (
     <div className="space-y-3">
-      <div className="flex h-3 overflow-hidden rounded-sm bg-card">
+      <div className="flex h-4 overflow-hidden rounded-sm bg-card">
         {ORDER.map((key) => {
           const p = percent(valueOf(result[key], mode), total);
           if (p <= 0) return null;
@@ -35,14 +35,18 @@ export function ResultsMeter({
                 key === "abstain" && "bg-abstain",
               )}
               style={{ width: `${p}%` }}
+              title={`${CHOICE_LABEL[key]} ${p.toFixed(0)}%`}
             />
           );
         })}
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {ORDER.map((key) => (
-          <div key={key} className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="flex items-center gap-2 text-muted">
+          <div
+            key={key}
+            className="rounded-lg border border-border bg-card px-3 py-3"
+          >
+            <p className="flex items-center gap-2 text-sm text-muted">
               <span
                 className={cn(
                   "size-2 rounded-full",
@@ -52,11 +56,15 @@ export function ResultsMeter({
                 )}
               />
               {CHOICE_LABEL[key]}
-            </span>
-            <span className="tabular-nums text-foreground">
-              {formatInt(result[key].apartments)}
-              <span className="text-subtle"> / {formatArea(result[key].area)}</span>
-            </span>
+            </p>
+            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+              {total === 0
+                ? "—"
+                : formatPct(valueOf(result[key], mode), total).replace("\u00a0%", "%")}
+            </p>
+            <p className="mt-1 text-xs tabular-nums text-subtle">
+              {formatInt(result[key].apartments)} кв. · {formatArea(result[key].area)}
+            </p>
           </div>
         ))}
       </div>

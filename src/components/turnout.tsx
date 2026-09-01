@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { formatArea, formatInt, formatPct, percent } from "@/lib/format";
 
 export function TurnoutCard({
@@ -66,7 +65,7 @@ export function TurnoutCard({
             <p className="font-display text-2xl font-semibold tabular-nums">
               {formatPct(votedApartments, totalApartments ?? 0)}
             </p>
-            <p className="mt-1 text-sm text-muted">от всех квартир дома 52</p>
+            <p className="mt-1 text-sm text-muted">от всех квартир дома 51</p>
           </div>
         ) : null}
       </div>
@@ -89,16 +88,12 @@ export function TurnoutCard({
         </li>
         {totalApartments ? (
           <li className="text-muted">
-            {formatInt(votedApartments)} из {formatInt(totalApartments)} квартир дома 52
+            {formatInt(votedApartments)} из {formatInt(totalApartments)} квартир дома 51
             {totalArea ? ` · ${formatArea(votedArea)} из ${formatArea(totalArea)}` : null}
           </li>
         ) : (
           <li className="text-subtle">
-            Чтобы видеть процент от всего дома, совет указывает число квартир в{" "}
-            <Link to="/roll" className="text-primary hover:underline">
-              реестре
-            </Link>
-            .
+            Чтобы видеть процент от всего дома, совет указывает число квартир.
           </li>
         )}
       </ul>

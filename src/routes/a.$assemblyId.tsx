@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VoteQuestion } from "@/components/vote-question";
+import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   CHOICE_LABEL,
@@ -25,6 +26,7 @@ import {
   getAssembly,
   getMe,
   publishAssembly,
+  reopenAssembly,
   type WeightMode,
 } from "@/lib/voting";
 
@@ -33,21 +35,23 @@ export const Route = createFileRoute("/a/$assemblyId")({ component: AssemblyPage
 function AssemblyPage() {
   const { assemblyId } = Route.useParams();
   const id = Number(assemblyId);
-  const { user } = useCurrentUserState();
+  const { user, isPending } = useCurrentUserState();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [mode, setMode] = useState<WeightMode>("area");
   const [pendingQ, setPendingQ] = useState<number | null>(null);
 
-  const assembly = useQuery({
-    queryKey: ["assembly", id],
-    queryFn: () => getAssembly({ data: { assemblyId: id } }),
-    enabled: Number.isFinite(id),
-  });
   const me = useQuery({
     queryKey: ["me", user?.id],
     queryFn: () => getMe(),
     enabled: Boolean(user),
+    retry: false,
+  });
+  const ownerReady = Boolean(user && me.data?.owner);
+  const assembly = useQuery({
+    queryKey: ["assembly", id, user?.id],
+    queryFn: () => getAssembly({ data: { assemblyId: id } }),
+    enabled: ownerReady && Number.isFinite(id),
     retry: false,
   });
 
@@ -72,6 +76,16 @@ function AssemblyPage() {
       toast.success("Голосование закрыто");
     },
     onError: (err: Error) => toast.error(err.message || "Не удалось закрыть"),
+  });
+
+  const reopen = useMutation({
+    mutationFn: () => reopenAssembly({ data: { assemblyId: id } }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["assembly", id] });
+      await qc.invalidateQueries({ queryKey: ["home"] });
+      toast.success("Голосование снова открыто. Старые голоса на месте.");
+    },
+    onError: (err: Error) => toast.error(err.message || "Не удалось открыть"),
   });
 
   const publish = useMutation({
@@ -99,7 +113,32 @@ function AssemblyPage() {
   if (!Number.isFinite(id)) {
     return <p className="text-sm text-muted">Нет такого собрания.</p>;
   }
-  if (assembly.isPending) {
+  if (isPending) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-28 w-full rounded-xl" />
+        <Skeleton className="h-56 w-full rounded-xl" />
+      </div>
+    );
+  }
+  if (!user) return <RedirectToSignIn />;
+  if (me.isSuccess && !me.data.owner) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4">
+        <h1 className="font-display text-3xl font-semibold">Сначала квартира</h1>
+        <p className="text-sm text-muted">
+          Повестку и результаты видят только собственники из реестра.
+        </p>
+        <Link
+          to="/profile"
+          className="inline-flex h-11 items-center rounded-sm bg-primary px-4 text-sm font-medium text-primary-foreground"
+        >
+          Зарегистрировать квартиру
+        </Link>
+      </div>
+    );
+  }
+  if (assembly.isPending || me.isPending) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-28 w-full rounded-xl" />
@@ -128,6 +167,7 @@ function AssemblyPage() {
   const canClose = Boolean(
     open && owner && (owner.role === "council" || a.createdBy === user?.id),
   );
+  const canReopen = Boolean(!draft && !open && owner?.role === "council");
   const canPublish = Boolean(draft && owner?.role === "council");
   const canReject = Boolean(
     draft && owner && (owner.role === "council" || a.createdBy === user?.id),
@@ -188,10 +228,26 @@ function AssemblyPage() {
               Закрыть голосование
             </Button>
           ) : null}
+          {canReopen ? (
+            <Button
+              size="sm"
+              className="h-11"
+              disabled={reopen.isPending}
+              onClick={() => reopen.mutate()}
+            >
+              Открыть снова
+            </Button>
+          ) : null}
         </div>
         {canClose ? (
           <p className="text-xs text-subtle">
             Закрывать стоит, когда явка перестала расти. После закрытия голоса не меняются.
+          </p>
+        ) : null}
+        {canReopen ? (
+          <p className="text-xs text-subtle">
+            В чате ещё просят проголосовать — откройте снова. Прежние бюллетени
+            останутся, кто не успел — сможет доголосовать.
           </p>
         ) : null}
         {draft ? (
@@ -202,7 +258,7 @@ function AssemblyPage() {
           </p>
         ) : !user ? (
           <p className="rounded-md border border-border bg-card px-4 py-3 text-sm text-muted">
-            Смотреть реестр можно без входа. Чтобы голосовать —{" "}
+            Чтобы голосовать —{" "}
             <Link to="/login" className="font-medium text-primary hover:underline">
               войдите
             </Link>{" "}
@@ -244,7 +300,7 @@ function AssemblyPage() {
           {a.title}. Статус: {open ? "открыто" : "закрыто"}.{" "}
           {a.closesAt ? `До ${formatDate(a.closesAt)}.` : null} Явка: {a.voterCount} из{" "}
           {a.registeredApartments} квартир в реестре
-          {a.totalApartments ? `, ${a.voterCount} из ${a.totalApartments} в доме 52` : ""}.
+          {a.totalApartments ? `, ${a.voterCount} из ${a.totalApartments} в доме 51` : ""}.
         </p>
       </div>
 
@@ -258,6 +314,7 @@ function AssemblyPage() {
             canVote={canVote}
             pending={pendingQ === q.id}
             preview={draft}
+            showLedger={owner?.role === "council"}
             onVote={(choice) => {
               setPendingQ(q.id);
               vote.mutate({ questionId: q.id, choice });
@@ -266,12 +323,12 @@ function AssemblyPage() {
         ))}
       </div>
 
-      {!draft ? (
+      {owner?.role === "council" && !draft ? (
       <section className="space-y-3">
         <h2 className="font-display text-xl font-semibold">Сводный реестр</h2>
         <p className="text-sm text-muted">
-          Все бюллетени по этой повестке. Пересчитайте сами: квартира + площадь +
-          решение.
+          Видно только совету. Квартира + площадь + решение — чтобы сверить
+          подсчёт, не светить бюллетени двору.
         </p>
         {a.questions.map((q) => (
           <div key={q.id} className="space-y-2">

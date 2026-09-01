@@ -18,12 +18,16 @@ export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const { user } = useCurrentUserState();
-  const home = useQuery({ queryKey: ["home"], queryFn: () => getHome() });
   const me = useQuery({
     queryKey: ["me", user?.id],
     queryFn: () => getMe(),
     enabled: Boolean(user),
     retry: false,
+  });
+  const ownerReady = Boolean(user && me.data?.owner);
+  const home = useQuery({
+    queryKey: ["home", user?.id ?? "guest"],
+    queryFn: () => getHome(),
   });
 
   const drafts = useQuery({
@@ -46,7 +50,7 @@ function Home() {
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
           Если УК считает бюллетени без вас — пересчитайте голоса двора здесь.
-          Каждый голос виден: корпус, квартира, площадь, решение.
+          Повестку видят свои. Кто как проголосовал — только совет.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           {user && !me.data?.owner ? (
@@ -74,12 +78,14 @@ function Home() {
               <ArrowRight className="size-4" />
             </Link>
           )}
-          <Link
-            to="/roll"
-            className="inline-flex h-12 items-center rounded-sm border border-strong bg-surface px-5 text-sm font-medium text-foreground hover:bg-card"
-          >
-            Реестр соседей
-          </Link>
+          {isCouncil ? (
+            <Link
+              to="/roll"
+              className="inline-flex h-12 items-center rounded-sm border border-strong bg-surface px-5 text-sm font-medium text-foreground hover:bg-card"
+            >
+              Реестр соседей
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -88,27 +94,37 @@ function Home() {
           icon={<UserRound className="size-4" />}
           label="Квартир в реестре"
           value={
-            data
+            ownerReady && data
               ? countLabel(data.registeredApartments, "квартира", "квартиры", "квартир")
-              : "…"
+              : ownerReady
+                ? "…"
+                : "Скрыто"
           }
-          hint={data ? formatArea(data.registeredArea) : ""}
+          hint={
+            ownerReady
+              ? data
+                ? formatArea(data.registeredArea)
+                : ""
+              : "После входа и квартиры"
+          }
         />
         <StatCard
           icon={<Scale className="size-4" />}
           label="Открытых голосований"
           value={
-            data
+            ownerReady && data
               ? String(data.assemblies.filter((a) => a.status === "open").length)
-              : "…"
+              : ownerReady
+                ? "…"
+                : "Скрыто"
           }
-          hint="Живой подсчёт на глазах"
+          hint={ownerReady ? "Живой подсчёт на глазах" : "Только для собственников"}
         />
         <StatCard
           icon={<HousesMark className="h-4 w-10" />}
           label="Корпуса"
           value="1 · 2 · 3"
-          hint="Дом 52"
+          hint="Дом 51"
         />
       </section>
 
@@ -129,7 +145,7 @@ function Home() {
           icon={<Eye className="size-4" />}
           n="03"
           title="Проверка"
-          text="Итог считается и по квартирам, и по метрам. Реестр виден всем — без «чёрного ящика» УК."
+          text="Итог — диаграмма по квартирам и по метрам. Кто именно как голосовал, видит только совет."
         />
       </section>
 
@@ -169,11 +185,29 @@ function Home() {
 
         <div className="flex items-end justify-between gap-3">
           <h2 className="font-display text-2xl font-semibold">Повестка</h2>
-          <Link to="/create" className="text-sm font-medium text-primary hover:underline">
-            Предложить вопрос
-          </Link>
+          {ownerReady ? (
+            <Link to="/create" className="text-sm font-medium text-primary hover:underline">
+              Предложить вопрос
+            </Link>
+          ) : null}
         </div>
-        {home.isPending ? (
+        {!user ? (
+          <p className="rounded-xl border border-dashed border-border bg-card px-5 py-8 text-sm text-muted">
+            Повестка, вопросы и результаты — только для собственников, которые
+            вошли.{" "}
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              Войти
+            </Link>
+          </p>
+        ) : !ownerReady ? (
+          <p className="rounded-xl border border-dashed border-border bg-card px-5 py-8 text-sm text-muted">
+            Сначала{" "}
+            <Link to="/profile" className="font-medium text-primary hover:underline">
+              укажите квартиру
+            </Link>
+            — иначе список голосований не показываем.
+          </p>
+        ) : home.isPending ? (
           <div className="space-y-3">
             <Skeleton className="h-36 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />

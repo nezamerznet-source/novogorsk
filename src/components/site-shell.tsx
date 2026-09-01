@@ -1,17 +1,27 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { AuthSlot } from "@/components/auth-slot";
 import { HousesMark } from "@/components/houses-mark";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getMe } from "@/lib/voting";
 import { cn } from "@/lib/utils";
-
-const NAV = [
-  { to: "/", label: "Собрания" },
-  { to: "/roll", label: "Реестр" },
-  { to: "/create", label: "Новое" },
-] as const;
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useCurrentUserState();
+  const me = useQuery({
+    queryKey: ["me", user?.id],
+    queryFn: () => getMe(),
+    enabled: Boolean(user),
+    retry: false,
+  });
+  const isCouncil = me.data?.owner?.role === "council";
+  const nav = [
+    { to: "/", label: "Собрания" },
+    ...(isCouncil ? [{ to: "/roll", label: "Реестр" }] : []),
+    { to: "/create", label: "Новое" },
+  ] as const;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -30,7 +40,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <AuthSlot />
           </div>
           <nav className="flex items-center gap-1">
-            {NAV.map((item) => {
+            {nav.map((item) => {
               const active =
                 item.to === "/"
                   ? pathname === "/"
