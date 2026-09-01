@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Открытое собрание",
+      "hasCanvas": false,
+      "bodyTextLen": 1225,
+      "bodyTextHash": "735371809e2f11266b7a261b4876caa88a3579cf561bd0b841717ae1d32d2bbd",
+      "bodyTextPrefix": "Открытое собрание Новогорск Курорт Войти Собрания Реестр Новое Ж",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Открытое собрание",
+      "hasCanvas": false,
+      "bodyTextLen": 1225,
+      "bodyTextHash": "735371809e2f11266b7a261b4876caa88a3579cf561bd0b841717ae1d32d2bbd",
+      "bodyTextPrefix": "Открытое собрание Новогорск Курорт Войти Собрания Реестр Новое Ж",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": true,
+  "baselineReasons": [
+    "desktop: body text changed (815 -> 1225 chars, hash mismatch)"
+  ]
+}
