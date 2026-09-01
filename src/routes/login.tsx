@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,94 +81,73 @@ function Login() {
       {!authEnabled ? (
         <p className="text-sm text-muted">Вход временно выключен.</p>
       ) : (
-        <>
-          <form onSubmit={(e) => void onEmail(e)} className="space-y-3 rounded-xl border border-border bg-surface p-5">
-            {mode === "up" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Имя</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
-                  placeholder="Иван Петров"
-                />
-              </div>
-            ) : null}
+        <form onSubmit={(e) => void onEmail(e)} className="space-y-3 rounded-xl border border-border bg-surface p-5">
+          {mode === "up" ? (
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="name">Имя</Label>
               <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                placeholder="you@mail.ru"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                placeholder="Иван Петров"
               />
             </div>
-            {mode === "up" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Телефон</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  autoComplete="tel"
-                  inputMode="tel"
-                  placeholder="+7 999 123-45-67"
-                />
-              </div>
-            ) : null}
+          ) : null}
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder="you@mail.ru"
+            />
+          </div>
+          {mode === "up" ? (
             <div className="space-y-1.5">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="phone">Телефон</Label>
               <Input
-                id="password"
-                type="password"
+                id="phone"
+                type="tel"
                 required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "up" ? "new-password" : "current-password"}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="tel"
+                inputMode="tel"
+                placeholder="+7 999 123-45-67"
               />
             </div>
-            {error ? <p className="text-sm text-against">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Подождите…" : mode === "in" ? "Войти" : "Создать аккаунт"}
-            </Button>
-            <button
-              type="button"
-              className="w-full text-sm text-muted hover:text-foreground"
-              onClick={() => {
-                setMode(mode === "in" ? "up" : "in");
-                setError(null);
-              }}
-            >
-              {mode === "in" ? "Нет аккаунта — зарегистрироваться" : "Уже есть аккаунт — войти"}
-            </button>
-          </form>
-
-          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-subtle">
-            <span className="h-px flex-1 bg-border" />
-            или
-            <span className="h-px flex-1 bg-border" />
+          ) : null}
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Пароль</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === "up" ? "new-password" : "current-password"}
+            />
           </div>
-
-          <div className="space-y-2">
-            {GROK_PROVIDERS.map((p) => (
-              <Button
-                key={p.providerId}
-                variant="outline"
-                className="w-full"
-                onClick={() => void signIn(p.providerId, { callbackURL: "/profile" })}
-              >
-                Продолжить через {p.label}
-              </Button>
-            ))}
-          </div>
-        </>
+          {error ? <p className="text-sm text-against">{error}</p> : null}
+          <Button type="submit" className="w-full" disabled={busy}>
+            {busy ? "Подождите…" : mode === "in" ? "Войти" : "Создать аккаунт"}
+          </Button>
+          <button
+            type="button"
+            className="w-full text-sm text-muted hover:text-foreground"
+            onClick={() => {
+              setMode(mode === "in" ? "up" : "in");
+              setError(null);
+            }}
+          >
+            {mode === "in" ? "Нет аккаунта — зарегистрироваться" : "Уже есть аккаунт — войти"}
+          </button>
+        </form>
       )}
 
       <p className="text-center text-xs text-subtle">
