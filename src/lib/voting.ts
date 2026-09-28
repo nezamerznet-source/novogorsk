@@ -279,8 +279,8 @@ export const getHome = createServerFn({ method: "POST" })
           voterCount: toNum(row.voter_count),
         }))
       : [],
-    registeredApartments: toNum(stats[0]?.n),
-    registeredArea: toNum(stats[0]?.area),
+    registeredApartments: role ? toNum(stats[0]?.n) : 0,
+    registeredArea: role ? toNum(stats[0]?.area) : 0,
     totalApartments: settings[0]?.total_apartments == null ? null : toNum(settings[0].total_apartments),
     totalArea: settings[0]?.total_area == null ? null : toNum(settings[0].total_area),
   };
