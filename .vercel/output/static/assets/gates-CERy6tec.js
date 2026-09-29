@@ -1,1 +1,0 @@
-import"./rolldown-runtime-hePW80VL.js";import{a as e}from"./client-B0yiJabO.js";import{u as t}from"./utils-kZ6IPk4S.js";import{t as n}from"./useNavigate-BIteMLhC.js";e();var r=t(),i=`/login`;function a({to:e=i}){return(0,r.jsx)(n,{to:e})}export{a as t};
