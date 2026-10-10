@@ -14,7 +14,12 @@ import {
 } from "@/lib/format";
 import { getDrafts, getHome, getMe } from "@/lib/voting";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    links: [{ rel: "canonical", href: "https://novogorsk.com/" }],
+  }),
+  component: Home,
+});
 
 function Home() {
   const { user } = useCurrentUserState();
